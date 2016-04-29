@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+    "log"
 
 	"github.com/gpavlidi/go-hangups"
 )
@@ -41,9 +42,16 @@ func (c *HangoutsClient) Init(refreshToken string) error {
 
 func (c *HangoutsClient) StartPolling() error {
 	// find whoami and seed the sync timestamp to current time
-	getSelfInfo, _ := c.Client.GetSelfInfo()
-	c.lastSync = *getSelfInfo.ResponseHeader.CurrentServerTime
-	c.SelfId = *getSelfInfo.SelfEntity.Id.GaiaId
+	getSelfInfo, err := c.Client.GetSelfInfo()
+
+    if err == nil {
+	    c.lastSync = *getSelfInfo.ResponseHeader.CurrentServerTime
+	    c.SelfId = *getSelfInfo.SelfEntity.Id.GaiaId
+    } else {
+        log.Println("Error getting self info:")
+        log.Println(err)
+    }
+
 
 	go func() {
 		ticker := time.NewTicker(time.Second * time.Duration(c.PollFrequency))
@@ -82,6 +90,12 @@ func (c *HangoutsClient) poll() {
 	c.lastSync = *newEvents.ResponseHeader.CurrentServerTime
 
 	for _, conversation := range newEvents.ConversationState {
+
+        if conversation.Conversation == nil {
+            log.Println("Error getting conversation:")
+            log.Println(conversation)
+            continue
+        }
 
 		//find or generate conversation name
 		conversationName := ""
